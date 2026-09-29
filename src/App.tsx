@@ -29,6 +29,16 @@ function External({ href, children, className = '' }: { href: string; children: 
   return <a className={className} href={href} target="_blank" rel="noreferrer">{children}<ExternalLink aria-hidden="true" size={15} /></a>
 }
 
+function BrandMark({ small = false }: { small?: boolean }) {
+  return <span className={`brand-mark${small ? ' small' : ''}`} aria-hidden="true">
+    <svg viewBox="0 0 40 40" fill="none">
+      <path d="M8 32V18C8 11.4 13.4 6 20 6s12 5.4 12 12v14" />
+      <path d="M14 32V19.5a6 6 0 0 1 12 0V32" />
+      <circle cx="20" cy="23" r="2.6" />
+    </svg>
+  </span>
+}
+
 function App() {
   const [route, setRoute] = useState<Route>(parseRoute)
   const [snapshot, setSnapshot] = useState<CollectionSnapshot | null>(null)
@@ -75,7 +85,7 @@ function App() {
       <a className="skip-link" href="#main">Skip to content</a>
       <header className="site-header">
         <button className="wordmark" onClick={() => go()} aria-label="Mintroom home">
-          <span className="wordmark-mark">M</span><span>Mintroom</span>
+          <BrandMark /><span className="wordmark-label">Mintroom</span>
         </button>
         <button className="menu-button" onClick={() => setMenuOpen(!menuOpen)} aria-expanded={menuOpen} aria-controls="site-nav" aria-label="Toggle navigation">
           {menuOpen ? <X /> : <Menu />}
@@ -98,7 +108,7 @@ function App() {
       </main>
 
       <footer>
-        <div><span className="wordmark-mark small">M</span><strong>Mintroom</strong></div>
+        <div className="footer-brand"><BrandMark small /><span className="wordmark-label">Mintroom</span></div>
         <p>An independent gallery for KASMUTANT artwork on Kaspa.</p>
         <External href={COLLECTION_URL}>View the verified collection</External>
       </footer>
