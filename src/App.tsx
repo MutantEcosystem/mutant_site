@@ -7,7 +7,7 @@ type Route = { page: 'home' | 'gallery' | 'about' } | { page: 'artwork'; id: num
 type Filter = 'all' | MintStatus
 type Sort = 'number-asc' | 'number-desc' | 'rank-asc'
 
-const FEATURED_IDS = [85, 1, 577]
+const FEATURED_IDS = [1, 2, 577]
 
 function parseRoute(): Route {
   const path = window.location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
@@ -147,7 +147,7 @@ function Home({ snapshot, availableIds }: { snapshot: CollectionSnapshot; availa
     <section className="featured-strip">
       <div className="section-heading"><p className="eyebrow">Selected works</p><button className="text-link" onClick={() => go('gallery')}>View all artwork <ArrowRight size={17} /></button></div>
       <div className="selected-grid">
-        {[1, 85, 577].map((id, index) => <ArtworkCard key={id} artwork={snapshot.items.find((item) => item.tokenId === id)!} status={availableIds.has(id) ? 'available' : 'minted'} priority={index < 2} />)}
+        {FEATURED_IDS.map((id, index) => <ArtworkCard key={id} artwork={snapshot.items.find((item) => item.tokenId === id)!} status={availableIds.has(id) ? 'available' : 'minted'} priority={index < 2} />)}
       </div>
     </section>
   </>
@@ -157,7 +157,7 @@ function Gallery({ snapshot, availableIds, updatedAt, statusSource, statusError 
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('number-asc')
-  const [limit, setLimit] = useState(48)
+  const [limit, setLimit] = useState(30)
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase().replace(/^#/, '')
@@ -171,7 +171,7 @@ function Gallery({ snapshot, availableIds, updatedAt, statusSource, statusError 
     return result.sort((a, b) => sort === 'number-desc' ? b.tokenId - a.tokenId : sort === 'rank-asc' ? (a.rarityRank ?? Infinity) - (b.rarityRank ?? Infinity) : a.tokenId - b.tokenId)
   }, [snapshot.items, query, filter, sort, availableIds])
 
-  useEffect(() => setLimit(48), [query, filter, sort])
+  useEffect(() => setLimit(30), [query, filter, sort])
 
   return <section className="gallery-page">
     <header className="page-heading"><p className="eyebrow">KASMUTANT archive</p><h1>Meet every mutant.</h1><p>Search by number, name, or trait. Mint availability is checked against the official KRC-721 indexer.</p></header>
@@ -188,8 +188,8 @@ function Gallery({ snapshot, availableIds, updatedAt, statusSource, statusError 
     {statusError && <p className="notice">Live refresh failed. Showing the last verified snapshot.</p>}
 
     {filtered.length ? <>
-      <div className="art-grid">{filtered.slice(0, limit).map((item, index) => <ArtworkCard key={item.tokenId} artwork={item} status={availableIds.has(item.tokenId) ? 'available' : 'minted'} priority={index < 8} />)}</div>
-      {limit < filtered.length && <button className="button light load-more" onClick={() => setLimit((value) => value + 48)}>Show more artwork</button>}
+      <div className="art-grid">{filtered.slice(0, limit).map((item, index) => <ArtworkCard key={item.tokenId} artwork={item} status={availableIds.has(item.tokenId) ? 'available' : 'minted'} priority={index < 2} />)}</div>
+      {limit < filtered.length && <button className="button light load-more" onClick={() => setLimit((value) => value + 30)}>Show more artwork</button>}
     </> : <div className="empty-state"><p className="eyebrow">No matches</p><h2>Nothing is hiding here.</h2><p>Try another number, name, or status filter.</p><button className="text-link" onClick={() => { setQuery(''); setFilter('all') }}>Clear filters</button></div>}
   </section>
 }
@@ -198,10 +198,22 @@ function ArtworkCard({ artwork, status, priority = false }: { artwork: Artwork; 
   if (!artwork) return null
   return <article className="art-card">
     <button onClick={() => go(`artwork/${artwork.tokenId}`)} aria-label={`View ${artwork.name}`}>
-      <span className="image-frame"><img src={artworkImage(artwork.tokenId)} alt={`${artwork.name}, KASMUTANT digital artwork`} loading={priority ? 'eager' : 'lazy'} /></span>
+      <span className="image-frame"><ArtworkMedia artwork={artwork} status={status} priority={priority} /></span>
       <span className="card-info"><span><strong>{artwork.name}</strong><small>{artwork.rarityRank ? `Rarity rank #${artwork.rarityRank}` : 'KRC-721 artwork'}</small></span><span className={`status ${status}`}>{status === 'available' ? 'Available' : 'Minted'}</span></span>
     </button>
   </article>
+}
+
+function ArtworkMedia({ artwork, status, priority = false }: { artwork: Artwork; status: MintStatus; priority?: boolean }) {
+  const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [artwork.tokenId])
+
+  if (status === 'available' || failed) {
+    const message = status === 'available' ? 'Preview unavailable before mint' : 'Image temporarily unavailable'
+    return <span className="art-placeholder" role="img" aria-label={`${artwork.name}: ${message}`}><span aria-hidden="true">M</span><small>{message}</small></span>
+  }
+
+  return <img src={artworkImage(artwork.tokenId)} alt={`${artwork.name}, KASMUTANT digital artwork`} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'low'} onError={() => setFailed(true)} />
 }
 
 function ArtworkView({ snapshot, id, availableIds, updatedAt }: { snapshot: CollectionSnapshot; id: number; availableIds: Set<number>; updatedAt: string }) {
@@ -225,7 +237,7 @@ function ArtworkView({ snapshot, id, availableIds, updatedAt }: { snapshot: Coll
   return <section className="artwork-view" aria-labelledby="artwork-title">
     <button ref={closeRef} className="back-link" onClick={() => go('gallery')}><ArrowLeft size={17} /> Back to gallery</button>
     <div className="artwork-layout">
-      <div className="detail-image"><img src={artworkImage(id)} alt={`${artwork.name}, KASMUTANT digital artwork`} /></div>
+      <div className="detail-image"><ArtworkMedia artwork={artwork} status={status} priority /></div>
       <div className="detail-copy">
         <p className="eyebrow">KASMUTANT · #{id}</p>
         <h1 id="artwork-title">{artwork.name}</h1>
@@ -247,7 +259,7 @@ function About({ snapshot }: { snapshot: CollectionSnapshot }) {
   const available = snapshot.collection.totalSupply - snapshot.collection.totalMinted
   return <section className="about-page">
     <header className="about-hero"><div><p className="eyebrow">Collection story</p><h1>Made for the<br /><em>mutant-minded.</em></h1></div><p>{snapshot.collection.description} This independent gallery was made to slow the experience down and let every piece hold the room.</p></header>
-    <div className="about-image"><img src={artworkImage(85)} alt="Kasmutant #85 from the KASMUTANT collection" /></div>
+    <div className="about-image"><img src={artworkImage(1)} alt="Kasmutant #1 from the KASMUTANT collection" /></div>
     <div className="facts-grid">
       <div><strong>{snapshot.collection.totalSupply.toLocaleString('en')}</strong><span>Total works</span></div>
       <div><strong>{snapshot.collection.totalMinted.toLocaleString('en')}</strong><span>Minted at snapshot</span></div>
